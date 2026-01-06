@@ -73,7 +73,7 @@ poetry shell
 
 ### Running Main file
 python NA_main.py
-
+```bash
 ---
 ###Output
 
@@ -98,3 +98,4 @@ Distance Statistics
 Minimum distance to nearest park: 0.0 m
 Maximum distance to nearest park: 1,499.76 m
 Mean distance to nearest park: 469.95 m
+
