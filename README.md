@@ -69,7 +69,8 @@ poetry install
 
 
 ### Activate the environment
-poetry env activate
+poetry shell
 
 ### Running Main file
 python NA_main.py
+
