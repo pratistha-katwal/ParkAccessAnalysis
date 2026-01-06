@@ -63,40 +63,43 @@ The workflow integrates **geospatial data processing**, **graph-based network an
 ```bash
 git clone https://github.com/pratistha-katwal/Amsterdam_ParkAccessibility.git
 cd Amsterdam_ParkAccessibility
-
-### Install Dependencies
+Install Dependencies
+bash
+Copy code
 poetry install
-
-
-### Activate the environment
+Activate the Environment
+bash
+Copy code
 poetry shell
-
-### Running Main file
+Run the Main File
+bash
+Copy code
 python NA_main.py
-
----
-### Output
-
+Output
 After running the project, a folder named NA_outputs will be created. This folder contains:
 
-Shapefiles and GeoPackage files (.gpkg) for Amsterdam boundaries, parks, buildings, and walking network.
+Shapefiles and GeoPackage files (.gpkg) for Amsterdam boundaries, parks, buildings, and walking network
 
-Maps and visualizations (.html and .png) showing park accessibility.
+Maps and visualizations (.html and .png) showing park accessibility
 
 Viewing the Map
-
 Open the HTML file in a browser to interactively explore park accessibility:
 
+bash
+Copy code
 NA_outputs/amsterdam_park_accessibility.html
-
 Sample Data Overview
+
 Total buildings: 197,057
-Buildings with park access within 1500m: 190,120
-Buildings without park access within 1500m: 6,937
+
+Buildings with park access within 1500 m: 190,120
+
+Buildings without park access within 1500 m: 6,937
 
 Distance Statistics
+
 Minimum distance to nearest park: 0.0 m
+
 Maximum distance to nearest park: 1,499.76 m
+
 Mean distance to nearest park: 469.95 m
-
-
