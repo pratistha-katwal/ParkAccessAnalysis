@@ -1,17 +1,15 @@
 import folium
 import geopandas as gpd
-import matplotlib.pyplot as plt
 import os
-import webbrowser  # <-- add this
+import webbrowser
+from folium.plugins import MarkerCluster
 
-# ==================================================
-# Folium-based interactive map
-# ==================================================
 class FoliumVisualization:
     @staticmethod
     def plot_map(buildings_gdf, street_gdf, park_gdf, boundary_gdf, city_name="City", max_distance=1500):
         """
         Plot park accessibility for residential buildings in a city using Folium.
+        Uses MarkerCluster to speed up rendering for large datasets.
         """
         # -----------------------------
         # Ensure CRS is EPSG:4326
@@ -27,14 +25,11 @@ class FoliumVisualization:
         # -----------------------------
         # Compute centroid for map center
         # -----------------------------
-        boundary_proj = boundary_gdf.to_crs(epsg=28992)
-        centroid_proj = boundary_proj.geometry.centroid.iloc[0]
-        centroid = gpd.GeoSeries([centroid_proj], crs=28992).to_crs(epsg=4326).iloc[0]
-
+        centroid = boundary_gdf.geometry.centroid.iloc[0]
         m = folium.Map(location=[centroid.y, centroid.x], zoom_start=14)
 
         # -----------------------------
-        # Add boundary
+        # Add boundary, streets, parks
         # -----------------------------
         folium.GeoJson(
             boundary_gdf,
@@ -42,32 +37,23 @@ class FoliumVisualization:
             style_function=lambda x: {"fillColor": "none", "color": "blue", "weight": 2}
         ).add_to(m)
 
-        # -----------------------------
-        # Add street network
-        # -----------------------------
         folium.GeoJson(
             street_gdf,
             name="Walking Network",
             style_function=lambda x: {"color": "gray", "weight": 1}
         ).add_to(m)
 
-        # -----------------------------
-        # Add parks
-        # -----------------------------
         folium.GeoJson(
             park_gdf,
             name="Parks",
-            style_function=lambda x: {
-                "fillColor": "green",
-                "color": "green",
-                "weight": 1,
-                "fillOpacity": 0.6
-            }
+            style_function=lambda x: {"fillColor": "green", "color": "green", "weight": 1, "fillOpacity": 0.6}
         ).add_to(m)
 
         # -----------------------------
-        # Add buildings as colored dots
+        # Add buildings using MarkerCluster
         # -----------------------------
+        marker_cluster = MarkerCluster(name="Buildings").add_to(m)
+
         for _, row in buildings_gdf.iterrows():
             dist = row.get("dist_to_park_m", max_distance + 500)
             accessible = row.get(f"park_access_{max_distance}m", False)
@@ -85,12 +71,12 @@ class FoliumVisualization:
 
             folium.CircleMarker(
                 location=[row.geometry.y, row.geometry.x],
-                radius=1,
+                radius=2,
                 color=color,
                 fill=True,
-                fill_opacity=0.4,
+                fill_opacity=0.5,
                 popup=f"Distance: {dist:.0f} m<br>Accessible: {'Yes' if accessible else 'No'}"
-            ).add_to(m)
+            ).add_to(marker_cluster)
 
         # -----------------------------
         # Add legend & title
@@ -124,11 +110,11 @@ class FoliumVisualization:
         os.makedirs("NA_outputs", exist_ok=True)
         map_file = f"NA_outputs/{city_name.replace(' ', '_').lower()}_park_accessibility.html"
         m.save(map_file)
-        
+
         # -----------------------------
         # Open automatically in web browser
         # -----------------------------
-        webbrowser.open(f"file://{os.path.abspath(map_file)}")  # <-- this opens the map
+        # webbrowser.open(f"file://{os.path.abspath(map_file)}")
 
         print(f"✅ Map saved and opened at {map_file}")
         return m
