@@ -1,7 +1,7 @@
-from src.na_parkaccess.NA_data_processing import get_ams_data
+from src.na_parkaccess.NA_data_processing import get_place_data
 from src.na_parkaccess.NA_analysis import ParkAccessibility
 from src.na_parkaccess.NA_visualization import FoliumVisualization
-from src.na_parkaccess.NA_visualization import MatplotlibVisualization
+
 import os
 import webbrowser
 
@@ -9,28 +9,29 @@ def main():
     # -------------------------------
     # Config
     # -------------------------------
-    TARGET_CRS = "EPSG:28992"
-    MAX_DISTANCE = 1500  # meters
+    PLACE_NAME = "Kathmandu, Nepal"   # change to any city/country
+    TARGET_CRS = "EPSG:32645"         # UTM zone for Kathmandu
+    MAX_DISTANCE = 1500               # meters
 
     # -------------------------------
-    # Load or download AMS datasets
+    # Load or download datasets
     # -------------------------------
-    ams_boundary, parks_ams, buildings_ams, walking_edges_ams = get_ams_data()
+    boundary, parks, buildings, walking_edges = get_place_data(PLACE_NAME)
 
     # -------------------------------
-    # Initialize model
+    # Initialize accessibility model
     # -------------------------------
     access_model = ParkAccessibility(
-        place_name="Amsterdam, Netherlands",
+        place_name=PLACE_NAME,
         target_crs=TARGET_CRS
     )
 
     # -------------------------------
-    # Generate centroids and snap to graph
+    # Generate building centroids and park nodes
     # -------------------------------
     buildings_pts, park_nodes = access_model.generate_building_centroids_and_snap(
-        buildings_ams,
-        parks_ams
+        buildings,
+        parks
     )
 
     # -------------------------------
@@ -43,31 +44,31 @@ def main():
     )
 
     # -------------------------------
-    # Save output
+    # Save output GeoPackage
     # -------------------------------
     os.makedirs("NA_outputs", exist_ok=True)
-    if not os.path.exists("NA_outputs/buildings_park_access_1500m.gpkg"):
-        accessibility_gdf.to_file(
-            "NA_outputs/buildings_park_access_1500m.gpkg",
-            driver="GPKG"
-        )
+    out_gpkg = f"NA_outputs/{PLACE_NAME.replace(', ', '_').replace(' ', '_').lower()}_park_access_{MAX_DISTANCE}m.gpkg"
+
+    if not os.path.exists(out_gpkg):
+        accessibility_gdf.to_file(out_gpkg, driver="GPKG")
 
     print("✅ Accessibility analysis complete")
     print(accessibility_gdf[f"park_access_{MAX_DISTANCE}m"].value_counts())
 
+    # -------------------------------
+    # Generate interactive Folium map
+    # -------------------------------
     m = FoliumVisualization.plot_map(
         buildings_gdf=accessibility_gdf,
-        street_gdf=walking_edges_ams,
-        park_gdf=parks_ams,
-        ams_boundary=ams_boundary
+        street_gdf=walking_edges,
+        park_gdf=parks,
+        boundary_gdf=boundary   # matches the parameter name in your FoliumVisualization class
     )
 
-    # Open the map automatically
-    map_path = os.path.abspath("NA_outputs/amsterdam_park_accessibility.html")
+    # Save and open map
+    map_path = os.path.abspath("NA_outputs/kathmandu_park_accessibility.html")
+    m.save(map_path)
     webbrowser.open(f"file://{map_path}")
 
-    fig = MatplotlibVisualization.plot_map(building_gdf=accessibility_gdf)
-    fig.savefig("NA_outputs/amsterdam_park_accessibility_matplotlib.png")
-    print("✅ Map generated and saved to NA_outputs/amsterdam_park_accessibility.html")
 if __name__ == "__main__":
     main()

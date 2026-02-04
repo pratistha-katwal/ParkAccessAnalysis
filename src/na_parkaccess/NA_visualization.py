@@ -1,57 +1,58 @@
+import folium
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import os
+import webbrowser  # <-- add this
+
+# ==================================================
+# Folium-based interactive map
+# ==================================================
 class FoliumVisualization:
     @staticmethod
-    def plot_map(buildings_gdf, street_gdf, park_gdf, ams_boundary):
-        import folium
-        import geopandas as gpd
-        import os
-
+    def plot_map(buildings_gdf, street_gdf, park_gdf, boundary_gdf, city_name="City", max_distance=1500):
+        """
+        Plot park accessibility for residential buildings in a city using Folium.
+        """
         # -----------------------------
         # Ensure CRS is EPSG:4326
         # -----------------------------
         buildings_gdf = buildings_gdf.to_crs(epsg=4326)
         street_gdf = street_gdf.to_crs(epsg=4326)
         park_gdf = park_gdf.to_crs(epsg=4326)
-        ams_boundary = ams_boundary.to_crs(epsg=4326)
+        boundary_gdf = boundary_gdf.to_crs(epsg=4326)
 
-        buildings_gdf["dist_to_park_m"] = buildings_gdf["dist_to_park_m"].fillna(2000)
+        if "dist_to_park_m" not in buildings_gdf.columns:
+            buildings_gdf["dist_to_park_m"] = max_distance + 500
 
         # -----------------------------
-        # Map center
+        # Compute centroid for map center
         # -----------------------------
-# Compute centroid safely in projected CRS
-        ams_proj = ams_boundary.to_crs(epsg=28992)
-        centroid_proj = ams_proj.geometry.centroid.iloc[0]
+        boundary_proj = boundary_gdf.to_crs(epsg=28992)
+        centroid_proj = boundary_proj.geometry.centroid.iloc[0]
         centroid = gpd.GeoSeries([centroid_proj], crs=28992).to_crs(epsg=4326).iloc[0]
 
         m = folium.Map(location=[centroid.y, centroid.x], zoom_start=14)
 
         # -----------------------------
-        # Boundary
+        # Add boundary
         # -----------------------------
         folium.GeoJson(
-            ams_boundary,
-            name="Amsterdam Boundary",
-            style_function=lambda x: {
-                "fillColor": "none",
-                "color": "blue",
-                "weight": 2
-            }
+            boundary_gdf,
+            name=f"{city_name} Boundary",
+            style_function=lambda x: {"fillColor": "none", "color": "blue", "weight": 2}
         ).add_to(m)
 
         # -----------------------------
-        # Street network
+        # Add street network
         # -----------------------------
         folium.GeoJson(
             street_gdf,
             name="Walking Network",
-            style_function=lambda x: {
-                "color": "gray",
-                "weight": 1
-            }
+            style_function=lambda x: {"color": "gray", "weight": 1}
         ).add_to(m)
 
         # -----------------------------
-        # Parks
+        # Add parks
         # -----------------------------
         folium.GeoJson(
             park_gdf,
@@ -65,11 +66,11 @@ class FoliumVisualization:
         ).add_to(m)
 
         # -----------------------------
-        # Buildings
+        # Add buildings as colored dots
         # -----------------------------
         for _, row in buildings_gdf.iterrows():
-            dist = row["dist_to_park_m"]
-            accessible = row["park_access_1500m"]
+            dist = row.get("dist_to_park_m", max_distance + 500)
+            accessible = row.get(f"park_access_{max_distance}m", False)
 
             if not accessible:
                 color = "red"
@@ -77,7 +78,7 @@ class FoliumVisualization:
                 color = "green"
             elif dist <= 1000:
                 color = "yellow"
-            elif dist <= 1500:
+            elif dist <= max_distance:
                 color = "orange"
             else:
                 color = "red"
@@ -92,75 +93,42 @@ class FoliumVisualization:
             ).add_to(m)
 
         # -----------------------------
-        # Layer control
+        # Add legend & title
         # -----------------------------
-        folium.LayerControl().add_to(m)
-
-        # -----------------------------
-        # Legend
-        # -----------------------------
-        legend_html = """
+        legend_html = f"""
         <div style="position: fixed; bottom: 50px; left: 50px;
                     background-color: white; padding: 10px;
-                    border: 2px solid grey; z-index: 9999;
-                    font-size: 12px;">
+                    border: 2px solid grey; z-index: 9999; font-size: 12px;">
             <b>Park Accessibility</b><br><br>
-
             <span style="color:green">●</span> 0–500 m<br>
             <span style="color:yellow">●</span> 500–1000 m<br>
-            <span style="color:orange">●</span> 1000–1500 m<br>
+            <span style="color:orange">●</span> 1000–{max_distance} m<br>
             <span style="color:red">●</span> Not accessible<br><br>
-
-            
             Parks <span style="background:green; display:inline-block; width:15px; height:10px; margin-left:5px;"></span><br>
             Street Network <span style="background:gray; display:inline-block; width:15px; height:10px; margin-left:5px;"></span><br>
             City Boundary <span style="border:3px solid blue; display:inline-block; width:15px; height:10px; margin-left:5px;"></span><br>
-            
         </div>
         """
-        title_html = """
+        title_html = f"""
         <h3 align="center" style="font-size:20px">
-            Accessibility of Residential Buildings to Public Parks in Amsterdam (≤ 1500 m Walking Distance)
+            Accessibility of Residential Buildings to Public Parks in {city_name} (≤ {max_distance} m Walking Distance)
         </h3>
         """
 
         m.get_root().html.add_child(folium.Element(title_html))
-
-
         m.get_root().html.add_child(folium.Element(legend_html))
-        m.save("NA_outputs/amsterdam_park_accessibility.html")
-        m
+
+        # -----------------------------
+        # Save map
+        # -----------------------------
+        os.makedirs("NA_outputs", exist_ok=True)
+        map_file = f"NA_outputs/{city_name.replace(' ', '_').lower()}_park_accessibility.html"
+        m.save(map_file)
+        
+        # -----------------------------
+        # Open automatically in web browser
+        # -----------------------------
+        webbrowser.open(f"file://{os.path.abspath(map_file)}")  # <-- this opens the map
+
+        print(f"✅ Map saved and opened at {map_file}")
         return m
-
-class MatplotlibVisualization:
-    @staticmethod
-    def plot_map(building_gdf):
-        import matplotlib.pyplot as plt
-
-        counts = building_gdf["park_access_1500m"].value_counts()
-
-        labels = ["Covered (≤1500 m)", "Not Covered (>1500 m)"]
-        values = [counts.get(True, 0), counts.get(False, 0)]
-
-        fig, ax = plt.subplots(figsize=(6, 5))
-        bars = ax.bar(labels, values)
-
-        # Add value labels
-        for bar in bars:
-            ax.text(
-                bar.get_x() + bar.get_width() / 2,
-                bar.get_height(),
-                f"{int(bar.get_height()):,}",
-                ha="center",
-                va="bottom"
-            )
-
-        ax.set_ylabel("Number of Households")
-        ax.set_title("Household Access to Parks (1500 m Walking Distance)")
-        ax.grid(axis="y", linestyle="--", alpha=0.4)
-        fig.savefig("NA_outputs/amsterdam_park_accessibility_bar.png", dpi=300)
-
-        plt.tight_layout()
-        plt.show()
-        return fig
-
