@@ -1,11 +1,8 @@
 import streamlit as st
-import os
-import folium
-from streamlit_folium import st_folium
-
 from src.na_parkaccess.NA_data_processing import get_place_data
 from src.na_parkaccess.NA_analysis import ParkAccessibility
 from src.na_parkaccess.NA_visualization import FoliumVisualization
+from streamlit_folium import st_folium
 
 # -------------------------------
 # App title
@@ -32,17 +29,10 @@ max_distance = st.number_input(
 # -------------------------------
 @st.cache_data(show_spinner=True)
 def load_place_data(place_name):
-    """
-    Load boundary, parks, buildings, and walking edges for a given city.
-    Cached to prevent repeated downloads.
-    """
     return get_place_data(place_name)
 
 @st.cache_resource
 def init_access_model(place_name, target_crs="EPSG:32645"):
-    """
-    Initialize ParkAccessibility model and cache it.
-    """
     return ParkAccessibility(place_name=place_name, target_crs=target_crs)
 
 # -------------------------------
@@ -50,17 +40,16 @@ def init_access_model(place_name, target_crs="EPSG:32645"):
 # -------------------------------
 if st.button("Run Analysis"):
     with st.spinner("Downloading data and computing accessibility..."):
-        # Load data
         boundary, parks, buildings, walking_edges = load_place_data(place_name)
 
-        # Check for empty GeoDataFrames
+        # Check for empty datasets
         if buildings.empty or parks.empty:
             st.warning("❌ No buildings or parks found in this area. Try a different city.")
         else:
             # Initialize model
             access_model = init_access_model(place_name)
 
-            # Generate building centroids and nearest park nodes
+            # Generate building centroids and park nodes
             buildings_pts, park_nodes = access_model.generate_building_centroids_and_snap(buildings, parks)
 
             if not park_nodes:
@@ -71,7 +60,7 @@ if st.button("Run Analysis"):
                     buildings_pts, park_nodes, max_distance=max_distance
                 )
 
-                # Show results
+                # Display results
                 st.success("✅ Accessibility analysis complete")
                 st.dataframe(accessibility_gdf[[f"park_access_{max_distance}m", "dist_to_park_m"]].head())
 
@@ -84,5 +73,4 @@ if st.button("Run Analysis"):
                     city_name=place_name,
                     max_distance=max_distance
                 )
-
                 st_folium(folium_map, width=800, height=600)
