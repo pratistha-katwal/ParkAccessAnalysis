@@ -6,7 +6,7 @@ authors = [
     {name = "Your Name",email = "you@example.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11,<3.12"
 dependencies = [
     "streamlit>=1.30,<2.0",
     "streamlit_folium>=0.11,<1.0",
@@ -24,8 +24,6 @@ dependencies = [
     "requests>=2.31,<3.0",
     "matplotlib>=3.8,<3.9"
 ]
-requires-python = ">=3.11,<3.12"
-
 
 [tool.poetry]
 packages = [{include = "na_parkaccess", from = "src"}]
