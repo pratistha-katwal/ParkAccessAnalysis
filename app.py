@@ -3,6 +3,7 @@ from src.na_parkaccess.NA_data_processing import get_place_data
 from src.na_parkaccess.NA_analysis import ParkAccessibility
 from src.na_parkaccess.NA_visualization import FoliumVisualization
 from streamlit_folium import st_folium
+import osmnx as ox
 
 # -------------------------------
 # App title
@@ -30,6 +31,12 @@ max_distance = st.number_input(
 @st.cache_data(show_spinner=True)
 def load_place_data(place_name):
     return get_place_data(place_name)
+
+@st.cache_resource
+def load_graph(place_name, crs="EPSG:32645"):
+    G = ox.graph_from_place(place_name, network_type="walk")
+    G = ox.project_graph(G, to_crs=crs)
+    return G
 
 @st.cache_resource
 def init_access_model(place_name, target_crs="EPSG:32645"):
